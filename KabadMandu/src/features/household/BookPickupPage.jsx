@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useLanguage } from "@/lib/LanguageContext"
 import {
   CalendarPlus,
   Scale,
@@ -20,21 +21,26 @@ import {
   ArrowRight,
   ShieldCheck,
   ArrowLeft,
+  Calendar,
 } from "lucide-react"
 
 export default function BookPickupPage() {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   const [wasteTypes, setWasteTypes] = useState([])
   const [wasteTypeId, setWasteTypeId] = useState("")
   const [estimatedQty, setEstimatedQty] = useState("10")
   const [address, setAddress] = useState(profile?.area || "Kathmandu")
-  const [scheduledTime, setScheduledTime] = useState("")
+  const [scheduledDate, setScheduledDate] = useState("")
+  const [scheduledTime, setScheduledTime] = useState("09:00")
   const [notes, setNotes] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
+
+  const todayStr = new Date().toISOString().split("T")[0]
 
   useEffect(() => {
     if (profile?.area) {
@@ -100,12 +106,17 @@ export default function BookPickupPage() {
     setLoading(true)
 
     try {
+      let finalScheduled = null
+      if (scheduledDate) {
+        finalScheduled = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+      }
+
       const payload = {
         household_id: user.id,
         waste_type_id: finalWasteTypeId,
         estimated_qty: Number(estimatedQty),
         status: "requested",
-        scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,
+        scheduled_time: finalScheduled,
         address: address.trim(),
         notes: notes.trim() || null,
       }
@@ -130,17 +141,17 @@ export default function BookPickupPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Book a Free Scrap Pickup
+            {t("book.title", "Book a Free Scrap Pickup")}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Select scrap items, approximate weight, and your address. A verified collector will visit with digital scales.
+            {t("book.desc", "Select scrap items, approximate weight, and your address. A verified collector will visit with digital scales.")}
           </p>
         </div>
 
         <Button variant="ghost" size="sm" asChild className="text-xs text-slate-500 gap-1">
           <Link to="/household">
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Dashboard</span>
+            <span>{t("book.dashboard", "Dashboard")}</span>
           </Link>
         </Button>
       </div>
@@ -159,7 +170,7 @@ export default function BookPickupPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-1.5">
                 <Label htmlFor="wasteType" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Primary Scrap Type
+                  {t("book.scrapType", "Primary Scrap Type")}
                 </Label>
                 <select
                   id="wasteType"
@@ -179,7 +190,7 @@ export default function BookPickupPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="qty" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Estimated Quantity (KG)
+                    {t("book.estQuantity", "Estimated Quantity (KG)")}
                   </Label>
                   <span className="text-xs font-semibold text-emerald-600">
                     Rs. {selectedWasteType?.rate_per_kg || 0}/kg
@@ -205,21 +216,21 @@ export default function BookPickupPage() {
             <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-between">
               <div>
                 <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
-                  Estimated Cash on Collection:
+                  {t("book.estCash", "Estimated Cash on Collection:")}
                 </span>
                 <p className="text-xl font-extrabold text-emerald-900 dark:text-emerald-200">
                   {formatCurrency(estimatedTotal)}
                 </p>
               </div>
               <Badge className="bg-emerald-600 text-white text-[10px]">
-                Digital Scale Verified
+                {t("book.digitalScale", "Digital Scale Verified")}
               </Badge>
             </div>
 
             {/* Address */}
             <div className="space-y-1.5">
               <Label htmlFor="address" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Doorstep Pickup Address & Landmark
+                {t("book.address", "Doorstep Pickup Address & Landmark")}
               </Label>
               <Input
                 id="address"
@@ -232,28 +243,48 @@ export default function BookPickupPage() {
               />
             </div>
 
-            {/* Scheduled Date & Time */}
-            <div className="space-y-1.5">
-              <Label htmlFor="scheduledTime" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Preferred Date & Time (Optional)
-              </Label>
-              <Input
-                id="scheduledTime"
-                type="datetime-local"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                disabled={loading}
-                className="rounded-xl h-10 text-sm"
-              />
-              <p className="text-[11px] text-slate-400">
-                Leave blank for immediate same-day pickup.
-              </p>
+            {/* Scheduled Date & Time - Separated and Simplified */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="scheduledDate" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {t("book.preferredDate", "Preferred Date (Optional)")}
+                </Label>
+                <Input
+                  id="scheduledDate"
+                  type="date"
+                  min={todayStr}
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  disabled={loading}
+                  className="rounded-xl h-10 text-sm focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="scheduledTime" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {t("book.preferredTime", "Preferred Time Window (Optional)")}
+                </Label>
+                <select
+                  id="scheduledTime"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  disabled={loading || !scheduledDate}
+                  className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="09:00">{t("book.timeSlotMorning", "Morning (9:00 AM - 12:00 PM)")}</option>
+                  <option value="12:00">{t("book.timeSlotMidday", "Midday (12:00 PM - 3:00 PM)")}</option>
+                  <option value="15:00">{t("book.timeSlotAfternoon", "Afternoon (3:00 PM - 6:00 PM)")}</option>
+                </select>
+              </div>
             </div>
+            <p className="text-[11px] text-slate-400">
+              {t("book.scheduledHint", "Leave blank for immediate same-day pickup.")}
+            </p>
 
             {/* Notes */}
             <div className="space-y-1.5">
               <Label htmlFor="notes" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Additional Instructions / Notes (Optional)
+                {t("book.notes", "Additional Instructions / Notes (Optional)")}
               </Label>
               <textarea
                 id="notes"
@@ -281,11 +312,11 @@ export default function BookPickupPage() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting Request...
+                  {t("book.submitting", "Submitting Request...")}
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5">
-                  Confirm Pickup Request
+                  {t("book.submit", "Confirm Pickup Request")}
                   <ArrowRight className="w-4 h-4" />
                 </span>
               )}

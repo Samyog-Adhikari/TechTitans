@@ -198,12 +198,12 @@ export default function PublicLayout({ children }) {
             {/* Legal links */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                Legal
+                {t("footer.legal", "Legal")}
               </h4>
               <ul className="space-y-2 text-xs text-slate-300">
-                <li><a href="#privacy" onClick={(e) => { e.preventDefault(); alert("Privacy Policy: KabadMandu protects all user and transaction data.") }} className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#terms" onClick={(e) => { e.preventDefault(); alert("Terms of Service: Transparent pricing and cash on collection.") }} className="hover:text-white transition-colors">Terms of Service</a></li>
-                <li><a href="#license" onClick={(e) => { e.preventDefault(); alert("KabadMandu Circular Economy Initiative Nepal") }} className="hover:text-white transition-colors">Software License</a></li>
+                <li><Link to="/privacy" className="hover:text-white transition-colors">{t("footer.privacy", "Privacy Policy")}</Link></li>
+                <li><Link to="/terms" className="hover:text-white transition-colors">{t("footer.terms", "Terms of Service")}</Link></li>
+                <li><Link to="/license" className="hover:text-white transition-colors">{t("footer.license", "Software License")}</Link></li>
               </ul>
             </div>
           </div>

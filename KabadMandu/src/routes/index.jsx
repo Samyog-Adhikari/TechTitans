@@ -13,6 +13,9 @@ import RatesPage from "@/features/rates/RatesPage"
 import SignInPage from "@/features/auth/SignInPage"
 import SignUpPage from "@/features/auth/SignUpPage"
 import VerifyStatementPage from "@/features/public/VerifyStatementPage"
+import PrivacyPage from "@/features/public/PrivacyPage"
+import TermsPage from "@/features/public/TermsPage"
+import LicensePage from "@/features/public/LicensePage"
 
 // Household portal pages
 import HouseholdDashboard from "@/features/household/HouseholdDashboard"
@@ -50,6 +53,9 @@ export default function AppRoutes() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/verify" element={<VerifyStatementPage />} />
         <Route path="/verify/:code" element={<VerifyStatementPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/license" element={<LicensePage />} />
       </Route>
 
       {/* Household Portal (AppLayout Sidebar) */}

@@ -221,9 +221,14 @@
       "digitalScale": "Digital Scale Verified",
       "address": "Doorstep Pickup Address & Landmark",
       "scheduledTime": "Preferred Date & Time (Optional)",
+      "preferredDate": "Preferred Date (Optional)",
+      "preferredTime": "Preferred Time Window (Optional)",
+      "timeSlotMorning": "Morning (9:00 AM - 12:00 PM)",
+      "timeSlotMidday": "Midday (12:00 PM - 3:00 PM)",
+      "timeSlotAfternoon": "Afternoon (3:00 PM - 6:00 PM)",
       "scheduledHint": "Leave blank for immediate same-day pickup.",
       "notes": "Additional Instructions / Notes (Optional)",
-      "submit": "Submit Pickup Request",
+      "submit": "Confirm Pickup Request",
       "submitting": "Submitting Request..."
     },
     "history": {

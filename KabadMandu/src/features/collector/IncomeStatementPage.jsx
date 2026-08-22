@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { useAuth } from "@/hooks/useAuth"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -31,10 +31,59 @@ export default function IncomeStatementPage() {
   const { user, profile } = useAuth()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
   const [timePeriod, setTimePeriod] = useState("all") // "all" | "90" | "30"
   const [activeStatement, setActiveStatement] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [toastMsg, setToastMsg] = useState("")
+  const certificateRef = useRef(null)
+
+  // Hoisted above loadStatementData so it can be called inside it
+  const generateNewSnapshot = async (sourceEntries) => {
+    const safeEntries = Array.isArray(sourceEntries) ? sourceEntries : []
+    if (!user || safeEntries.length === 0) return
+    setGenerating(true)
+    setToastMsg("")
+
+    try {
+      const computed = computeTrustMetrics(safeEntries)
+      const earliestDate = safeEntries.reduce(
+        (earliest, curr) => (new Date(curr.created_at) < new Date(earliest) ? curr.created_at : earliest),
+        safeEntries[0].created_at
+      )
+      const latestDate = new Date().toISOString()
+      const verificationCode = `KM-NEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+
+      const snapshotPayload = {
+        collector_id: user.id,
+        period_start: earliestDate,
+        period_end: latestDate,
+        total_earnings: computed.totalEarnings,
+        total_pickups: computed.totalPickups,
+        weeks_active: computed.weeksActive,
+        avg_weekly_earnings: computed.avgWeeklyEarnings,
+        trust_tier: computed.trustTier,
+        verification_code: verificationCode,
+        generated_at: new Date().toISOString(),
+      }
+
+      const { data: newStmt, error } = await supabase
+        .from("income_statements")
+        .insert(snapshotPayload)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setActiveStatement(newStmt)
+      setToastMsg(`Certified Income Statement #${verificationCode} generated and signed!`)
+    } catch (err) {
+      console.error("Failed to generate statement snapshot:", err)
+      alert("Error generating statement: " + err.message)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const loadStatementData = async () => {
     if (!user) return
@@ -97,53 +146,45 @@ export default function IncomeStatementPage() {
   // Dynamic Trust Tier Metrics from active filtered records
   const metrics = computeTrustMetrics(filteredEntries)
 
-  const generateNewSnapshot = async (sourceEntries = filteredEntries) => {
-    if (!user || sourceEntries.length === 0) return
-    setGenerating(true)
-    setToastMsg("")
-
-    try {
-      const computed = computeTrustMetrics(sourceEntries)
-      const earliestDate = sourceEntries.reduce(
-        (earliest, curr) => (new Date(curr.created_at) < new Date(earliest) ? curr.created_at : earliest),
-        sourceEntries[0].created_at
-      )
-      const latestDate = new Date().toISOString()
-      const verificationCode = `KM-NEP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-
-      const snapshotPayload = {
-        collector_id: user.id,
-        period_start: earliestDate,
-        period_end: latestDate,
-        total_earnings: computed.totalEarnings,
-        total_pickups: computed.totalPickups,
-        weeks_active: computed.weeksActive,
-        avg_weekly_earnings: computed.avgWeeklyEarnings,
-        trust_tier: computed.trustTier,
-        verification_code: verificationCode,
-        generated_at: new Date().toISOString(),
-      }
-
-      const { data: newStmt, error } = await supabase
-        .from("income_statements")
-        .insert(snapshotPayload)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setActiveStatement(newStmt)
-      setToastMsg(`Certified Income Statement #${verificationCode} generated and signed!`)
-    } catch (err) {
-      console.error("Failed to generate statement snapshot:", err)
-      alert("Error generating statement: " + err.message)
-    } finally {
-      setGenerating(false)
-    }
-  }
-
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleDownloadPDF = async () => {
+    if (!certificateRef.current) return
+    setDownloading(true)
+    try {
+      const { default: html2canvas } = await import("html2canvas")
+      const { default: jsPDF } = await import("jspdf")
+
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      })
+
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      })
+
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
+
+      const fileName = `KabadMandu-Statement-${verificationCode}.pdf`
+      pdf.save(fileName)
+      setToastMsg(`Certificate downloaded as ${fileName}`)
+    } catch (err) {
+      console.error("PDF download failed:", err)
+      alert("PDF download failed. Try using Print > Save as PDF instead.")
+    } finally {
+      setDownloading(false)
+    }
   }
 
   const verificationCode =
@@ -194,11 +235,15 @@ export default function IncomeStatementPage() {
 
           <Button
             size="sm"
-            onClick={handlePrint}
+            onClick={handleDownloadPDF}
+            disabled={downloading}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-9 text-xs gap-1.5 shadow-sm"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download PDF</span>
+            {downloading ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Downloading...</span></>
+            ) : (
+              <><Download className="w-3.5 h-3.5" /><span>Download PDF</span></>
+            )}
           </Button>
         </div>
       </div>
@@ -257,7 +302,7 @@ export default function IncomeStatementPage() {
       </Card>
 
       {/* Official Verified Statement Document Card */}
-      <Card className="print-card rounded-3xl border-2 border-slate-200 dark:border-border bg-white dark:bg-card p-6 sm:p-10 shadow-lg print:shadow-none print:border-none space-y-8">
+      <Card ref={certificateRef} className="print-card rounded-3xl border-2 border-slate-200 dark:border-border bg-white dark:bg-card p-6 sm:p-10 shadow-lg print:shadow-none print:border-none space-y-8">
         {/* Document Top Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-border">
           <div className="space-y-1">
