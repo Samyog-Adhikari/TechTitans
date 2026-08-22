@@ -3,6 +3,9 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import Logo from "@/assets/logo"
 import { useAuth } from "@/hooks/useAuth"
+import ThemeToggle from "@/components/shared/ThemeToggle"
+import LanguageToggle from "@/components/shared/LanguageToggle"
+import { useLanguage } from "@/lib/LanguageContext"
 import {
   MessageCircle,
   Mail,
@@ -18,6 +21,7 @@ import {
 
 export default function PublicLayout({ children }) {
   const { user, role, signOut } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const getDashboardRoute = () => {
@@ -45,27 +49,31 @@ export default function PublicLayout({ children }) {
           {/* Center Links */}
           <nav className="hidden md:flex items-center gap-7">
             <NavLink to="/" className={navLinkClass}>
-              Home
+              {t("nav.home", "Home")}
             </NavLink>
             <NavLink to="/about" className={navLinkClass}>
-              About
+              {t("nav.about", "About")}
             </NavLink>
             <NavLink to="/services" className={navLinkClass}>
-              Services
+              {t("nav.services", "Services")}
             </NavLink>
             <NavLink to="/rates" className={navLinkClass}>
-              Rates
+              {t("nav.rates", "Rates")}
             </NavLink>
             <NavLink to="/verify" className={navLinkClass}>
-              Verify Statement
+              {t("nav.verify", "Verify Statement")}
             </NavLink>
             <NavLink to="/contact" className={navLinkClass}>
-              Contact
+              {t("nav.contact", "Contact")}
             </NavLink>
           </nav>
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Theme & Language Toggles */}
+            <LanguageToggle />
+            <ThemeToggle />
+
             {user ? (
               <div className="flex items-center gap-2.5">
                 <Button
@@ -73,7 +81,7 @@ export default function PublicLayout({ children }) {
                   size="sm"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-5 text-xs font-semibold shadow-sm"
                 >
-                  Go to Portal
+                  {t("nav.goToPortal", "Go to Portal")}
                   <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
                 <Button
@@ -82,7 +90,7 @@ export default function PublicLayout({ children }) {
                   onClick={() => signOut()}
                   className="rounded-full text-xs text-muted-foreground"
                 >
-                  Sign Out
+                  {t("nav.signOut", "Sign Out")}
                 </Button>
               </div>
             ) : (
@@ -93,14 +101,14 @@ export default function PublicLayout({ children }) {
                   asChild
                   className="text-xs sm:text-sm font-medium rounded-full px-3 text-slate-700 dark:text-slate-300"
                 >
-                  <Link to="/signin">Sign in</Link>
+                  <Link to="/signin">{t("nav.signIn", "Sign in")}</Link>
                 </Button>
                 <Button
                   size="sm"
                   asChild
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-full px-5 text-xs sm:text-sm shadow-sm shadow-emerald-600/20"
                 >
-                  <Link to="/signup">Book a pickup</Link>
+                  <Link to="/signup">{t("nav.signUp", "Book a pickup")}</Link>
                 </Button>
               </div>
             )}

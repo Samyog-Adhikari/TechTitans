@@ -105,16 +105,13 @@ export function AuthProvider({ children }) {
     })
     if (error) throw error
 
-    // Create profile explicitly in case trigger did not run
+    // Fetch profile if the user was automatically signed in (email confirmation off)
     if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id,
-        role,
-        name,
-        phone,
-        area,
-      })
-      await fetchProfile(data.user.id)
+      try {
+        await fetchProfile(data.user.id)
+      } catch (err) {
+        console.warn("Could not fetch profile immediately post-signup:", err)
+      }
     }
     return data
   }

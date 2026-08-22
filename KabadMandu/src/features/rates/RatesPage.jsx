@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useLanguage } from "@/lib/LanguageContext"
 import {
   Search,
   Scale,
@@ -26,6 +27,7 @@ import {
 
 export default function RatesPage() {
   const { user, role } = useAuth()
+  const { t, t_material } = useLanguage()
   const [wasteTypes, setWasteTypes] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -54,13 +56,13 @@ export default function RatesPage() {
       } else {
         // Fallback default scrap rates if table is fresh
         const fallback = [
-          { id: "1", name: "Copper & Brass", rate_per_kg: 450, category: "metals" },
-          { id: "2", name: "Aluminium & Cans", rate_per_kg: 120, category: "metals" },
-          { id: "3", name: "E-Waste / Electronics", rate_per_kg: 65, category: "ewaste" },
-          { id: "4", name: "Steel & Iron Metal", rate_per_kg: 40, category: "metals" },
-          { id: "5", name: "Plastics (PET Bottles & HDPE)", rate_per_kg: 22, category: "plastic" },
-          { id: "6", name: "Paper & Cardboard", rate_per_kg: 18, category: "paper" },
-          { id: "7", name: "Glass Bottles", rate_per_kg: 8, category: "glass" },
+          { id: "1", name: "Copper & Brass", rate_per_kg: 450, unit: "per_kg", category: "Metals" },
+          { id: "2", name: "Aluminium & Cans", rate_per_kg: 120, unit: "per_kg", category: "Metals" },
+          { id: "3", name: "E-Waste / Electronics", rate_per_kg: 65, unit: "per_kg", category: "E-Waste" },
+          { id: "4", name: "Steel & Iron Metal", rate_per_kg: 40, unit: "per_kg", category: "Metals" },
+          { id: "5", name: "Plastics (PET Bottles & HDPE)", rate_per_kg: 22, unit: "per_kg", category: "Plastic" },
+          { id: "6", name: "Paper & Cardboard", rate_per_kg: 18, unit: "per_kg", category: "Paper & Cardboard" },
+          { id: "7", name: "Glass Bottles", rate_per_kg: 8, unit: "per_kg", category: "Glass & Bottles" },
         ]
         setWasteTypes(fallback)
         if (!calcSelectedId) setCalcSelectedId(fallback[0].id)
@@ -68,13 +70,13 @@ export default function RatesPage() {
     } catch (err) {
       console.warn("Using fallback scrap types:", err.message)
       const fallback = [
-        { id: "1", name: "Copper & Brass", rate_per_kg: 450, category: "metals" },
-        { id: "2", name: "Aluminium & Cans", rate_per_kg: 120, category: "metals" },
-        { id: "3", name: "E-Waste / Electronics", rate_per_kg: 65, category: "ewaste" },
-        { id: "4", name: "Steel & Iron Metal", rate_per_kg: 40, category: "metals" },
-        { id: "5", name: "Plastics (PET Bottles & HDPE)", rate_per_kg: 22, category: "plastic" },
-        { id: "6", name: "Paper & Cardboard", rate_per_kg: 18, category: "paper" },
-        { id: "7", name: "Glass Bottles", rate_per_kg: 8, category: "glass" },
+        { id: "1", name: "Copper & Brass", rate_per_kg: 450, unit: "per_kg", category: "Metals" },
+        { id: "2", name: "Aluminium & Cans", rate_per_kg: 120, unit: "per_kg", category: "Metals" },
+        { id: "3", name: "E-Waste / Electronics", rate_per_kg: 65, unit: "per_kg", category: "E-Waste" },
+        { id: "4", name: "Steel & Iron Metal", rate_per_kg: 40, unit: "per_kg", category: "Metals" },
+        { id: "5", name: "Plastics (PET Bottles & HDPE)", rate_per_kg: 22, unit: "per_kg", category: "Plastic" },
+        { id: "6", name: "Paper & Cardboard", rate_per_kg: 18, unit: "per_kg", category: "Paper & Cardboard" },
+        { id: "7", name: "Glass Bottles", rate_per_kg: 8, unit: "per_kg", category: "Glass & Bottles" },
       ]
       setWasteTypes(fallback)
       if (!calcSelectedId) setCalcSelectedId(fallback[0].id)
@@ -97,27 +99,54 @@ export default function RatesPage() {
     return Scale
   }
 
-  const getCategoryTag = (name) => {
-    const n = (name || "").toLowerCase()
+  // Resolve item name
+  const getDisplayName = (item) => {
+    return t_material ? t_material(item.name) : item.name
+  }
+
+  // Resolve item unit
+  const getItemUnit = (item) => {
+    if (item.unit) return item.unit;
+    const n = (item.name || "").toLowerCase();
+    if (n.includes("per piece") || n.includes("per_piece")) return "per_piece";
+    return "per_kg";
+  }
+
+  // Resolve item category
+  const getItemCategory = (item) => {
+    if (item.category) return item.category;
+    const n = (item.name || "").toLowerCase()
     if (n.includes("copper") || n.includes("brass") || n.includes("metal") || n.includes("iron") || n.includes("steel") || n.includes("can") || n.includes("aluminium")) return "Metals"
     if (n.includes("paper") || n.includes("cardboard") || n.includes("book")) return "Paper & Cardboard"
     if (n.includes("plastic") || n.includes("pet")) return "Plastics"
-    if (n.includes("e-waste") || n.includes("electronic")) return "E-Waste"
-    if (n.includes("glass")) return "Glass"
-    return "Recyclable"
+    if (n.includes("e-waste") || n.includes("electronic") || n.includes("battery")) return "E-Waste"
+    if (n.includes("glass")) return "Glass & Bottles"
+    return "Household Items"
+  }
+
+  // Translate category string
+  const translateCategory = (cat) => {
+    const c = (cat || "").toLowerCase();
+    if (c.includes("metal")) return t("rates.metals", "Metals")
+    if (c.includes("paper") || c.includes("cardboard")) return t("rates.paper", "Paper")
+    if (c.includes("plastic")) return t("rates.plastics", "Plastics")
+    if (c.includes("e-waste") || c.includes("electronic")) return t("rates.ewaste", "E-Waste")
+    if (c.includes("glass") || c.includes("bottle")) return t("rates.glass", "Glass")
+    return t("auth.roleHousehold", "Household Items")
   }
 
   // Filtered waste types
   const filteredTypes = wasteTypes.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
     if (selectedCategory === "all") return matchesSearch
-    const cat = getCategoryTag(item.name).toLowerCase()
+    const cat = getItemCategory(item).toLowerCase()
     return matchesSearch && cat.includes(selectedCategory)
   })
 
   // Selected item for calculator
   const calcItem = wasteTypes.find((w) => w.id === calcSelectedId) || wasteTypes[0]
   const calcTotal = calcItem ? (calcWeight * Number(calcItem.rate_per_kg || 0)) : 0
+  const calcUnit = calcItem ? getItemUnit(calcItem) : "per_kg"
 
   return (
     <div className="flex flex-col gap-14 py-12 px-6 sm:px-8 max-w-7xl mx-auto">
@@ -125,13 +154,13 @@ export default function RatesPage() {
       <div className="text-center max-w-3xl mx-auto space-y-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
           <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Live Kathmandu Scrap Market Rates (Updated Daily)</span>
+          <span>{t("rates.badge", "Live Kathmandu Scrap Market Rates (Updated Daily)")}</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Today's Scrap Rates & Price List
+          {t("rates.title", "Today's Scrap Rates & Price List")}
         </h1>
         <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-          Guaranteed fair prices per kilogram for all recyclable scrap items in Kathmandu Valley. Doorstep digital scale weighing ensures exact payout.
+          {t("rates.desc", "Guaranteed fair prices per kilogram for all recyclable scrap items in Kathmandu Valley. Doorstep digital scale weighing ensures exact payout.")}
         </p>
       </div>
 
@@ -142,7 +171,7 @@ export default function RatesPage() {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <Input
             type="text"
-            placeholder="Search scrap item (e.g. Copper, Iron, Bottle)..."
+            placeholder={t("rates.searchPlaceholder", "Search scrap item (e.g. Copper, Iron, Bottle)...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 rounded-xl h-10 text-xs sm:text-sm"
@@ -152,12 +181,12 @@ export default function RatesPage() {
         {/* Category Pills */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           {[
-            { id: "all", label: "All Items" },
-            { id: "metal", label: "Metals" },
-            { id: "paper", label: "Paper" },
-            { id: "plastic", label: "Plastics" },
-            { id: "e-waste", label: "E-Waste" },
-            { id: "glass", label: "Glass" },
+            { id: "all", label: t("rates.allItems", "All Items") },
+            { id: "metal", label: t("rates.metals", "Metals") },
+            { id: "paper", label: t("rates.paper", "Paper") },
+            { id: "plastic", label: t("rates.plastics", "Plastics") },
+            { id: "e-waste", label: t("rates.ewaste", "E-Waste") },
+            { id: "glass", label: t("rates.glass", "Glass") },
           ].map((cat) => (
             <button
               key={cat.id}
@@ -197,21 +226,22 @@ export default function RatesPage() {
             </div>
           ) : filteredTypes.length === 0 ? (
             <div className="text-center p-12 bg-white dark:bg-card rounded-2xl border border-dashed text-muted-foreground">
-              <p className="text-sm font-semibold">No scrap types found matching your query.</p>
+              <p className="text-sm font-semibold">{t("rates.noResults", "No scrap types found matching your query.")}</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => { setSearchQuery(""); setSelectedCategory("all") }}
                 className="mt-4 rounded-full text-xs"
               >
-                Reset Filters
+                {t("rates.resetFilters", "Reset Filters")}
               </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {filteredTypes.map((item) => {
                 const Icon = getScrapIcon(item.name)
-                const category = getCategoryTag(item.name)
+                const category = translateCategory(getItemCategory(item))
+                const unit = getItemUnit(item)
 
                 return (
                   <div
@@ -230,10 +260,10 @@ export default function RatesPage() {
 
                       <div>
                         <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                          {item.name}
+                          {getDisplayName(item)}
                         </h3>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Doorstep digital scale rate
+                          {t("rates.doorstepRate", "Doorstep digital scale rate")}
                         </p>
                       </div>
                     </div>
@@ -243,7 +273,9 @@ export default function RatesPage() {
                         <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-400">
                           Rs. {item.rate_per_kg}
                         </span>
-                        <span className="text-xs text-slate-400 ml-1">/ kg</span>
+                        <span className="text-xs text-slate-400 ml-1">
+                          {unit === "per_piece" ? `/${t("nav.home", "piece").replace("Main Menu", "piece")}` : t("rates.perKg", "/ kg")}
+                        </span>
                       </div>
 
                       <Button
@@ -255,7 +287,7 @@ export default function RatesPage() {
                         }}
                         className="text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded-lg h-8 px-2.5 font-medium"
                       >
-                        Calculate
+                        {t("rates.calculate", "Calculate")}
                       </Button>
                     </div>
                   </div>
@@ -273,8 +305,8 @@ export default function RatesPage() {
                 <Calculator className="w-5 h-5" />
               </div>
               <div>
-                <CardTitle className="text-lg font-bold">Payout Estimator</CardTitle>
-                <CardDescription className="text-xs">Estimate earnings before booking</CardDescription>
+                <CardTitle className="text-lg font-bold">{t("rates.calculatorTitle", "Payout Estimator")}</CardTitle>
+                <CardDescription className="text-xs">{t("rates.calculatorDesc", "Estimate earnings before booking")}</CardDescription>
               </div>
             </div>
 
@@ -282,29 +314,35 @@ export default function RatesPage() {
               {/* Select Scrap Type */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Select Scrap Item
+                  {t("rates.selectScrap", "Select Scrap Item")}
                 </label>
                 <select
                   value={calcSelectedId}
                   onChange={(e) => setCalcSelectedId(e.target.value)}
                   className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-600"
                 >
-                  {wasteTypes.map((wt) => (
-                    <option key={wt.id} value={wt.id}>
-                      {wt.name} (Rs. {wt.rate_per_kg}/kg)
-                    </option>
-                  ))}
+                  {wasteTypes.map((wt) => {
+                    const unit = getItemUnit(wt)
+                    const unitLabel = unit === "per_piece" ? "piece" : "kg"
+                    return (
+                      <option key={wt.id} value={wt.id}>
+                        {getDisplayName(wt)} (Rs. {wt.rate_per_kg}/{unitLabel})
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
 
-              {/* Weight in KG */}
+              {/* Quantity input */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Estimated Weight (in Kilograms)
+                    {calcUnit === "per_piece"
+                      ? t("household.book.estQuantity", "Estimated Quantity").replace("(KG)", "").trim() + " (in Pieces)"
+                      : t("rates.weightLabel", "Estimated Weight (in Kilograms)")}
                   </label>
                   <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                    {calcWeight} kg
+                    {calcWeight} {calcUnit === "per_piece" ? "pcs" : "kg"}
                   </span>
                 </div>
                 <Input
@@ -320,13 +358,13 @@ export default function RatesPage() {
               {/* Instant Calculation Result */}
               <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/80 text-center space-y-1 mt-4">
                 <span className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">
-                  Estimated Cash Payout
+                  {t("rates.estimatedPayout", "Estimated Cash Payout")}
                 </span>
                 <p className="text-3xl font-extrabold text-emerald-900 dark:text-emerald-200">
                   {formatCurrency(calcTotal)}
                 </p>
                 <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400">
-                  {calcWeight} kg × Rs. {calcItem?.rate_per_kg || 0}/kg
+                  {calcWeight} {calcUnit === "per_piece" ? "pcs" : "kg"} × Rs. {calcItem?.rate_per_kg || 0}/{calcUnit === "per_piece" ? "piece" : "kg"}
                 </p>
               </div>
 
@@ -336,7 +374,7 @@ export default function RatesPage() {
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-11 text-sm shadow-md shadow-emerald-600/20 gap-2 mt-3"
               >
                 <Link to={user && role === "household" ? "/household/book" : "/signup"}>
-                  Book Pickup for this Scrap
+                  {t("rates.bookPickup", "Book Pickup for this Scrap")}
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
@@ -347,16 +385,16 @@ export default function RatesPage() {
           <Card className="rounded-2xl border-slate-200/80 dark:border-border p-5 bg-white dark:bg-card shadow-sm space-y-3">
             <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Transparent Weighing Guarantee
+              {t("rates.guaranteeTitle", "Transparent Weighing Guarantee")}
             </h4>
             <ul className="space-y-2 text-xs text-slate-500">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                <span>All scales are calibrated digital hanging & platform scales.</span>
+                <span>{t("rates.guarantee1", "All scales are calibrated digital hanging & platform scales.")}</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                <span>Payment is made immediately on completion of weighing.</span>
+                <span>{t("rates.guarantee2", "Payment is made immediately on completion of weighing.")}</span>
               </li>
             </ul>
           </Card>

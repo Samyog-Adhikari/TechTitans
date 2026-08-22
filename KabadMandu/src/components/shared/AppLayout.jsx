@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import Logo from "@/assets/logo"
+import ThemeToggle from "@/components/shared/ThemeToggle"
+import LanguageToggle from "@/components/shared/LanguageToggle"
+import NotificationBell from "@/components/shared/NotificationBell"
+import { useLanguage } from "@/lib/LanguageContext"
 import {
   LayoutDashboard,
   CalendarPlus,
@@ -36,6 +40,7 @@ import {
 
 export default function AppLayout({ children }) {
   const { user, profile, role, signOut } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -64,6 +69,7 @@ export default function AppLayout({ children }) {
           links: [
             { label: "Complaints Inbox", to: "/admin/complaints", icon: Inbox },
             { label: "Verify Statement", to: "/admin/verify", icon: ShieldCheck },
+            { label: "Send Notifications", to: "/admin/notifications", icon: Bell },
           ],
         },
       ]
@@ -110,25 +116,55 @@ export default function AppLayout({ children }) {
 
   const navSections = getNavSections()
 
+  const translateLabel = (label) => {
+    switch (label) {
+      case "Dashboard": return t("household.book.dashboard", "Dashboard")
+      case "Manage Rates & Types": return t("admin.dashboard.manageRates", "Manage Rates & Types")
+      case "Collector Accounts": return t("admin.dashboard.collectorDirectory", "Collector Accounts")
+      case "Household Accounts": return t("admin.dashboard.registeredHouseholds", "Household Accounts")
+      case "Complaints Inbox": return t("admin.dashboard.complaintsInbox", "Complaints Inbox")
+      case "Verify Statement": return t("verify.title", "Verify Statement")
+      case "Send Notifications": return t("admin.notifications.title", "Send Notifications")
+      case "Available Jobs": return t("collector.dashboard.availableJobs", "Available Jobs")
+      case "Income Ledger": return t("collector.dashboard.viewLedger", "Income Ledger")
+      case "Verified Statement": return t("collector.dashboard.verifiedBadge", "Verified Statement")
+      case "Live Scrap Rates": return t("collector.dashboard.viewAllJobs", "Live Scrap Rates")
+      case "Submit Issue": return t("collector.complaint.title", "Submit Issue")
+      case "Book a Pickup": return t("household.dashboard.bookPickup", "Book a Pickup")
+      case "Booking History": return t("household.history.title", "Booking History")
+      case "Today's Scrap Rates": return t("rates.title", "Today's Scrap Rates")
+      case "Submit Complaint": return t("household.complaint.title", "Submit Complaint")
+      default: return label
+    }
+  }
+
+  const translateSectionTitle = (title) => {
+    if (title === "Main Menu") return t("nav.home", "Main Menu")
+    if (title === "Inbox & Support") return t("admin.dashboard.complaintsInbox", "Inbox & Support")
+    if (title === "Market & Help") return t("rates.calculatorTitle", "Market & Help")
+    if (title === "Market & Support") return t("rates.calculatorTitle", "Market & Support")
+    return title
+  }
+
   const getRoleBadge = () => {
-    if (role === "admin") return <Badge variant="destructive" className="text-[10px] uppercase font-bold">Admin Portal</Badge>
-    if (role === "collector") return <Badge className="bg-amber-600 hover:bg-amber-600 text-white text-[10px] uppercase font-bold">Collector Portal</Badge>
-    return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] uppercase font-bold">Household Portal</Badge>
+    if (role === "admin") return <Badge variant="destructive" className="text-[10px] uppercase font-bold">{t("admin.dashboard.systemBadge", "Admin Portal")}</Badge>
+    if (role === "collector") return <Badge className="bg-amber-600 hover:bg-amber-600 text-white text-[10px] uppercase font-bold">{t("collector.dashboard.verifiedBadge", "Collector Portal")}</Badge>
+    return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] uppercase font-bold">{t("auth.roleHousehold", "Household Portal")}</Badge>
   }
 
   const getPageTitle = () => {
     const path = location.pathname
-    if (path.includes("/book")) return "Book a Scrap Pickup"
-    if (path.includes("/history")) return "Booking History"
-    if (path.includes("/complaint")) return "Submit a Complaint"
-    if (path.includes("/rates")) return "Today's Scrap Rates & Calculator"
-    if (path.includes("/jobs")) return "Available Jobs"
-    if (path.includes("/ledger")) return "Income Ledger"
-    if (path.includes("/statement")) return "Income Statement"
-    if (path.includes("/collectors")) return "Collector Accounts"
-    if (path.includes("/households")) return "Household Accounts"
-    if (path.includes("/complaints")) return "Complaints Inbox"
-    return "Dashboard & Analytics"
+    if (path.includes("/book")) return t("household.book.title", "Book a Scrap Pickup")
+    if (path.includes("/history")) return t("household.history.title", "Booking History")
+    if (path.includes("/complaint")) return t("household.complaint.title", "Submit a Complaint")
+    if (path.includes("/rates")) return t("rates.title", "Today's Scrap Rates & Calculator")
+    if (path.includes("/jobs")) return t("collector.jobs.title", "Available Jobs")
+    if (path.includes("/ledger")) return t("collector.ledger.title", "Income Ledger")
+    if (path.includes("/statement")) return t("collector.dashboard.verifiedBadge", "Income Statement")
+    if (path.includes("/collectors")) return t("admin.collectors.title", "Collector Accounts")
+    if (path.includes("/households")) return t("admin.households.title", "Household Accounts")
+    if (path.includes("/complaints")) return t("admin.complaints.title", "Complaints Inbox")
+    return t("household.dashboard.title", "Dashboard & Analytics")
   }
 
   return (
@@ -151,7 +187,7 @@ export default function AppLayout({ children }) {
           <div className="p-5 border-b border-slate-100 dark:border-border/60">
             <div className="flex items-center justify-between">
               <Link to={role === "collector" ? "/collector" : role === "admin" ? "/admin" : "/household"} className="flex items-center gap-2">
-                <Logo size="default" />
+                <Logo size="sm" />
               </Link>
               <button
                 onClick={() => setMobileOpen(false)}
@@ -177,7 +213,7 @@ export default function AppLayout({ children }) {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 type="text"
-                placeholder="Search portal..."
+                placeholder={t("rates.searchPlaceholder", "Search portal...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 h-8 text-xs bg-slate-50 dark:bg-muted/40 border-slate-200/80 dark:border-border rounded-lg"
@@ -190,7 +226,7 @@ export default function AppLayout({ children }) {
             {navSections.map((section, idx) => (
               <div key={idx} className="space-y-1">
                 <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {section.title}
+                  {translateSectionTitle(section.title)}
                 </span>
                 <div className="space-y-0.5 pt-1">
                   {section.links.map((link) => {
@@ -210,7 +246,7 @@ export default function AppLayout({ children }) {
                           }`}
                       >
                         <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`} />
-                        <span>{link.label}</span>
+                        <span>{translateLabel(link.label)}</span>
                       </NavLink>
                     )
                   })}
@@ -231,8 +267,8 @@ export default function AppLayout({ children }) {
                 <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
                   {profile?.name || "KabadMandu User"}
                 </span>
-                <span className="text-[10px] text-slate-400 truncate capitalize">
-                  {role || "Household"}
+                <span className="text-[10px] text-slate-400 truncate capitalize font-medium">
+                  {role === "admin" ? t("auth.roleLabel", "Admin") : role === "collector" ? t("auth.roleCollector", "Collector") : t("auth.roleHousehold", "Household")}
                 </span>
               </div>
             </div>
@@ -242,7 +278,7 @@ export default function AppLayout({ children }) {
               size="icon"
               onClick={handleSignOut}
               className="w-7 h-7 text-slate-400 hover:text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
-              title="Sign Out"
+              title={t("nav.signOut", "Sign Out")}
             >
               <LogOut className="w-3.5 h-3.5" />
             </Button>
@@ -267,8 +303,8 @@ export default function AppLayout({ children }) {
             </h2>
           </div>
 
-          {/* Right: Quick actions, notifications, user */}
-          <div className="flex items-center gap-3">
+          {/* Right: Quick actions, notifications, toggles, user */}
+          <div className="flex items-center gap-2 sm:gap-3">
             {role === "household" && (
               <Button
                 size="sm"
@@ -277,7 +313,7 @@ export default function AppLayout({ children }) {
               >
                 <Link to="/household/book">
                   <CalendarPlus className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Book a Pickup</span>
+                  <span className="hidden sm:inline">{t("household.dashboard.bookPickup", "Book a Pickup")}</span>
                 </Link>
               </Button>
             )}
@@ -290,19 +326,17 @@ export default function AppLayout({ children }) {
               >
                 <Link to="/collector/jobs">
                   <Briefcase className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Find Jobs</span>
+                  <span className="hidden sm:inline">{t("collector.dashboard.viewAllJobs", "Find Jobs")}</span>
                 </Link>
               </Button>
             )}
 
-            {/* Notification Bell */}
-            <button
-              onClick={() => alert("No new notifications at this time.")}
-              className="relative p-2 rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-muted"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
-            </button>
+            {/* Language & Theme Toggles */}
+            <LanguageToggle />
+            <ThemeToggle />
+
+            {/* Notification Bell with dropdown */}
+            <NotificationBell />
 
             {/* Small Avatar */}
             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-muted border border-slate-200 dark:border-border flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-300">

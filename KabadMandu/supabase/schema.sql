@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS public.waste_types (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     rate_per_kg NUMERIC NOT NULL CHECK (rate_per_kg >= 0),
+    unit TEXT DEFAULT 'per_kg' NOT NULL CHECK (unit IN ('per_kg', 'per_piece')),
+    category TEXT,
     active BOOLEAN DEFAULT true NOT NULL,
     created_by UUID REFERENCES public.profiles(id),
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -59,15 +61,48 @@ CREATE TABLE IF NOT EXISTS public.waste_types (
 );
 
 -- Seed initial standard Nepal scrap rates
-INSERT INTO public.waste_types (name, rate_per_kg, active)
+INSERT INTO public.waste_types (name, rate_per_kg, unit, category, active)
 VALUES
-    ('Iron & Metal', 35.00, true),
-    ('Paper & Cardboard', 18.00, true),
-    ('Plastics (PET & HDPE)', 22.00, true),
-    ('E-Waste / Electronics', 65.00, true),
-    ('Glass Bottles', 8.00, true),
-    ('Aluminium & Cans', 120.00, true),
-    ('Copper & Brass', 450.00, true)
+    ('Copy / Notebooks', 15.00, 'per_kg', 'Paper & Cardboard', true),
+    ('A4 / White Paper', 12.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Books & Magazines', 11.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Cardboard', 10.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Carton', 10.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Confidential Documents', 7.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Magazines', 7.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Shredded Paper', 5.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Invitation Cards', 4.00, 'per_kg', 'Paper & Cardboard', true),
+    ('Egg Crates', 1.00, 'per_piece', 'Paper & Cardboard', true),
+    ('Copper', 1300.00, 'per_kg', 'Metals', true),
+    ('Brass', 1000.00, 'per_kg', 'Metals', true),
+    ('Aluminium', 200.00, 'per_kg', 'Metals', true),
+    ('Steel / Iron', 42.00, 'per_kg', 'Metals', true),
+    ('Tin & Cans', 18.00, 'per_kg', 'Metals', true),
+    ('PET Bottles', 20.00, 'per_kg', 'Plastic', true),
+    ('Hard Plastic', 15.00, 'per_kg', 'Plastic', true),
+    ('Mixed Plastic', 10.00, 'per_kg', 'Plastic', true),
+    ('Computer / CPU', 400.00, 'per_piece', 'E-Waste', true),
+    ('Laptop', 400.00, 'per_kg', 'E-Waste', true),
+    ('Mobile Phone', 100.00, 'per_piece', 'E-Waste', true),
+    ('Television', 100.00, 'per_piece', 'E-Waste', true),
+    ('Cables & Chargers', 150.00, 'per_kg', 'E-Waste', true),
+    ('Printer / Small Electronics', 80.00, 'per_piece', 'E-Waste', true),
+    ('Glass Bottles / Jars', 3.00, 'per_kg', 'Glass & Bottles', true),
+    ('Beer Bottle', 1.00, 'per_piece', 'Glass & Bottles', true),
+    ('Stainless Steel Utensils', 90.00, 'per_kg', 'Household Metal', true),
+    ('Aluminium Utensils', 150.00, 'per_kg', 'Household Metal', true),
+    ('Old Clothes / Textile', 8.00, 'per_kg', 'Textile', true),
+    ('Mattress', 150.00, 'per_piece', 'Household Items', true),
+    ('Wooden Furniture Scrap', 5.00, 'per_kg', 'Household Items', true),
+    ('Tyres / Rubber', 10.00, 'per_kg', 'Rubber', true),
+    ('Car Battery (Lead-Acid)', 180.00, 'per_kg', 'Batteries', true),
+    ('Inverter Battery', 170.00, 'per_kg', 'Batteries', true),
+    ('Washing Machine', 600.00, 'per_piece', 'Appliances', true),
+    ('Refrigerator', 700.00, 'per_piece', 'Appliances', true),
+    ('Air Conditioner', 1200.00, 'per_piece', 'Appliances', true),
+    ('Iron Rod / Rebar Scrap', 48.00, 'per_kg', 'Metals', true),
+    ('Wire Scrap (Copper-coated)', 250.00, 'per_kg', 'Metals', true),
+    ('Gas Cylinder (Empty)', 300.00, 'per_piece', 'Household Items', true)
 ON CONFLICT (name) DO NOTHING;
 
 -- ------------------------------------------------------------------------------

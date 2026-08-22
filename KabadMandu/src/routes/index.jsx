@@ -34,6 +34,7 @@ import AdminCollectorsPage from "@/features/admin/AdminCollectorsPage"
 import AdminHouseholdsPage from "@/features/admin/AdminHouseholdsPage"
 import AdminComplaintsPage from "@/features/admin/AdminComplaintsPage"
 import AdminVerifyPage from "@/features/admin/AdminVerifyPage"
+import AdminNotificationsPage from "@/features/admin/AdminNotificationsPage"
 
 export default function AppRoutes() {
   return (
@@ -100,6 +101,7 @@ export default function AppRoutes() {
         <Route path="complaints" element={<AdminComplaintsPage />} />
         <Route path="verify" element={<AdminVerifyPage />} />
         <Route path="verify/:code" element={<AdminVerifyPage />} />
+        <Route path="notifications" element={<AdminNotificationsPage />} />
       </Route>
 
       {/* Fallback */}

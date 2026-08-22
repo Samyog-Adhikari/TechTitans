@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useLanguage } from "@/lib/LanguageContext"
 import {
   TrendingUp,
   Plus,
@@ -21,13 +22,23 @@ import {
 } from "lucide-react"
 
 export default function AdminRatesPage() {
+  const { t } = useLanguage()
   const [wasteTypes, setWasteTypes] = useState([])
   const [loading, setLoading] = useState(true)
+  
+  // Editing state
   const [editingItem, setEditingItem] = useState(null)
   const [editRate, setEditRate] = useState("")
+  const [editUnit, setEditUnit] = useState("per_kg")
+  const [editCategory, setEditCategory] = useState("Metals")
+
+  // Add state
   const [showAddModal, setShowAddModal] = useState(false)
   const [newName, setNewName] = useState("")
   const [newRate, setNewRate] = useState("")
+  const [newUnit, setNewUnit] = useState("per_kg")
+  const [newCategory, setNewCategory] = useState("Paper & Cardboard")
+
   const [saving, setSaving] = useState(false)
   const [toastMsg, setToastMsg] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
@@ -53,15 +64,44 @@ export default function AdminRatesPage() {
     loadRates()
   }, [])
 
+  // Resolve item unit
+  const getItemUnit = (item) => {
+    if (item.unit) return item.unit;
+    const n = (item.name || "").toLowerCase();
+    if (n.includes("per piece") || n.includes("per_piece")) return "per_piece";
+    return "per_kg";
+  }
+
+  // Resolve item category
+  const getItemCategory = (item) => {
+    if (item.category) return item.category;
+    const n = (item.name || "").toLowerCase()
+    if (n.includes("copper") || n.includes("brass") || n.includes("metal") || n.includes("iron") || n.includes("steel") || n.includes("can") || n.includes("aluminium")) return "Metals"
+    if (n.includes("paper") || n.includes("cardboard") || n.includes("book")) return "Paper & Cardboard"
+    if (n.includes("plastic") || n.includes("pet")) return "Plastics"
+    if (n.includes("e-waste") || n.includes("electronic") || n.includes("battery")) return "E-Waste"
+    if (n.includes("glass")) return "Glass & Bottles"
+    return "Household Items"
+  }
+
+  // Resolve item display name
+  const getDisplayName = (item) => {
+    return item.name
+      .replace(/\s*\(per\s*piece\)/i, "")
+      .replace(/\s*\(per\s*kg\)/i, "");
+  }
+
   const handleStartEdit = (item) => {
     setEditingItem(item)
     setEditRate(String(item.rate_per_kg))
+    setEditUnit(getItemUnit(item))
+    setEditCategory(getItemCategory(item))
     setErrorMsg("")
   }
 
   const handleSaveEdit = async () => {
     if (!editRate || Number(editRate) < 0) {
-      setErrorMsg("Please enter a valid rate per kg.")
+      setErrorMsg("Please enter a valid rate.")
       return
     }
 
@@ -69,17 +109,41 @@ export default function AdminRatesPage() {
     setErrorMsg("")
 
     try {
+      // First try to update all fields including unit and category
       const { error } = await supabase
         .from("waste_types")
         .update({
           rate_per_kg: Number(editRate),
+          unit: editUnit,
+          category: editCategory,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingItem.id)
 
-      if (error) throw error
+      if (error) {
+        // Columns don't exist yet — fall back to updating rate only
+        const isColMissing = error.message?.toLowerCase().includes("column") ||
+          error.message?.toLowerCase().includes("schema cache") ||
+          error.code === "PGRST204"
+        
+        if (isColMissing) {
+          const { error: fallbackErr } = await supabase
+            .from("waste_types")
+            .update({
+              rate_per_kg: Number(editRate),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", editingItem.id)
+          
+          if (fallbackErr) throw fallbackErr
+          // Warn in console but don't block the user
+          console.warn("unit/category columns not yet in DB — run the SQL migration to unlock full editing")
+        } else {
+          throw error
+        }
+      }
 
-      setToastMsg(`Rate for "${editingItem.name}" updated to Rs. ${editRate}/kg live!`)
+      setToastMsg(`Rate for "${getDisplayName(editingItem)}" updated to Rs. ${editRate} live!`)
       setEditingItem(null)
       await loadRates()
     } catch (err) {
@@ -100,7 +164,7 @@ export default function AdminRatesPage() {
         .eq("id", item.id)
 
       if (error) throw error
-      setToastMsg(`"${item.name}" is now ${!item.active ? "Active" : "Disabled"}.`)
+      setToastMsg(`"${getDisplayName(item)}" is now ${!item.active ? "Active" : "Disabled"}.`)
       await loadRates()
     } catch (err) {
       setErrorMsg("Error updating status: " + err.message)
@@ -108,7 +172,7 @@ export default function AdminRatesPage() {
   }
 
   const handleDeleteMaterial = async (item) => {
-    if (!window.confirm(`Are you sure you want to permanently delete "${item.name}"?`)) {
+    if (!window.confirm(`Are you sure you want to permanently delete "${getDisplayName(item)}"?`)) {
       return
     }
 
@@ -123,12 +187,12 @@ export default function AdminRatesPage() {
 
       if (error) {
         if (error.code === "23503") {
-          throw new Error(`Cannot delete "${item.name}" because it is linked to existing pickups. You can click its status badge to Disable it instead.`)
+          throw new Error(`Cannot delete "${getDisplayName(item)}" because it is linked to existing pickups. You can click its status badge to Disable it instead.`)
         }
         throw error
       }
 
-      setToastMsg(`Scrap material "${item.name}" removed successfully!`)
+      setToastMsg(`Scrap material "${getDisplayName(item)}" removed successfully!`)
       await loadRates()
     } catch (err) {
       setErrorMsg(err.message || "Failed to delete item.")
@@ -146,15 +210,35 @@ export default function AdminRatesPage() {
     setErrorMsg("")
 
     try {
+      // First try inserting all columns
       const { error } = await supabase.from("waste_types").insert({
         name: newName.trim(),
         rate_per_kg: Number(newRate),
+        unit: newUnit,
+        category: newCategory,
         active: true,
       })
 
-      if (error) throw error
+      if (error) {
+        // Columns don't exist yet — insert without unit/category
+        const isColMissing = error.message?.toLowerCase().includes("column") ||
+          error.message?.toLowerCase().includes("schema cache") ||
+          error.code === "PGRST204"
 
-      setToastMsg(`Added new scrap material "${newName}" at Rs. ${newRate}/kg!`)
+        if (isColMissing) {
+          const { error: fallbackErr } = await supabase.from("waste_types").insert({
+            name: newName.trim(),
+            rate_per_kg: Number(newRate),
+            active: true,
+          })
+          if (fallbackErr) throw fallbackErr
+          console.warn("unit/category columns not yet in DB — run the SQL migration to unlock full features")
+        } else {
+          throw error
+        }
+      }
+
+      setToastMsg(`Added new scrap material "${newName}" at Rs. ${newRate}!`)
       setShowAddModal(false)
       setNewName("")
       setNewRate("")
@@ -172,10 +256,10 @@ export default function AdminRatesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Manage Scrap Rates & Waste Types
+            {t("admin.rates.title", "Manage Scrap Rates & Waste Types")}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Update official market rates per kilogram. Changes immediately update the public rates page and calculator.
+            Update official Kathmandu market scrap rates and collection units.
           </p>
         </div>
 
@@ -188,7 +272,7 @@ export default function AdminRatesPage() {
             className="rounded-xl h-9 text-xs font-semibold gap-1.5"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>Refresh</span>
+            <span>{t("admin.rates.refresh", "Refresh")}</span>
           </Button>
 
           <Button
@@ -197,7 +281,7 @@ export default function AdminRatesPage() {
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-9 text-xs gap-1.5 shadow-sm"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add New Scrap Type</span>
+            <span>{t("admin.rates.addNewType", "Add New Scrap Type")}</span>
           </Button>
         </div>
       </div>
@@ -235,23 +319,47 @@ export default function AdminRatesPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-muted/50 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200/80 dark:border-border">
                 <tr>
-                  <th className="py-3.5 px-5">Scrap Material</th>
-                  <th className="py-3.5 px-5">Current Rate (Rs. / KG)</th>
-                  <th className="py-3.5 px-5">Status</th>
-                  <th className="py-3.5 px-5">Last Updated</th>
-                  <th className="py-3.5 px-5 text-right">Actions</th>
+                  <th className="py-3.5 px-5">{t("admin.rates.scrapMaterial", "Scrap Material")}</th>
+                  <th className="py-3.5 px-5">Category</th>
+                  <th className="py-3.5 px-5">{t("admin.rates.currentRate", "Current Rate")}</th>
+                  <th className="py-3.5 px-5">{t("admin.rates.status", "Status")}</th>
+                  <th className="py-3.5 px-5">{t("admin.rates.lastUpdated", "Last Updated")}</th>
+                  <th className="py-3.5 px-5 text-right">{t("admin.rates.actions", "Actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-border text-slate-700 dark:text-slate-300">
                 {wasteTypes.map((item) => {
                   const isEditing = editingItem?.id === item.id
+                  const unit = getItemUnit(item)
+                  const category = getItemCategory(item)
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Name */}
                       <td className="py-4 px-5 font-bold text-slate-900 dark:text-white">
-                        {item.name}
+                        {getDisplayName(item)}
                       </td>
 
+                      {/* Category */}
+                      <td className="py-4 px-5">
+                        {isEditing ? (
+                          <select
+                            value={editCategory}
+                            onChange={(e) => setEditCategory(e.target.value)}
+                            className="h-8 rounded-lg border bg-background px-2 text-[11px] font-semibold"
+                          >
+                            {["Paper & Cardboard", "Metals", "Plastic", "E-Waste", "Glass & Bottles", "Household Metal", "Textile", "Household Items", "Rubber", "Batteries", "Appliances"].map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] font-medium">
+                            {category}
+                          </Badge>
+                        )}
+                      </td>
+
+                      {/* Rate / Unit */}
                       <td className="py-4 px-5">
                         {isEditing ? (
                           <div className="flex items-center gap-2">
@@ -262,21 +370,31 @@ export default function AdminRatesPage() {
                               step="0.5"
                               value={editRate}
                               onChange={(e) => setEditRate(e.target.value)}
-                              className="w-28 h-8 rounded-lg text-xs font-bold text-emerald-700"
+                              className="w-20 h-8 rounded-lg text-xs font-bold text-emerald-700"
                               autoFocus
                             />
-                            <span className="text-slate-400">/ kg</span>
+                            <select
+                              value={editUnit}
+                              onChange={(e) => setEditUnit(e.target.value)}
+                              className="h-8 rounded-lg border bg-background px-2 text-[11px] font-semibold"
+                            >
+                              <option value="per_kg">/ kg</option>
+                              <option value="per_piece">/ piece</option>
+                            </select>
                           </div>
                         ) : (
                           <div>
                             <span className="font-extrabold text-sm text-emerald-700 dark:text-emerald-400">
                               Rs. {item.rate_per_kg}
                             </span>
-                            <span className="text-slate-400 ml-1">/ kg</span>
+                            <span className="text-slate-400 ml-1">
+                              {unit === "per_piece" ? "/ piece" : "/ kg"}
+                            </span>
                           </div>
                         )}
                       </td>
 
+                      {/* Status */}
                       <td className="py-4 px-5">
                         <button
                           onClick={() => handleToggleActive(item)}
@@ -290,15 +408,17 @@ export default function AdminRatesPage() {
                                 : "bg-slate-200 text-slate-600 dark:bg-muted dark:text-slate-400 text-[10px]"
                             }
                           >
-                            {item.active ? "Active" : "Disabled"}
+                            {item.active ? t("admin.rates.active", "Active") : t("admin.rates.disabled", "Disabled")}
                           </Badge>
                         </button>
                       </td>
 
+                      {/* Last Updated */}
                       <td className="py-4 px-5 text-slate-400 text-[11px]">
                         {formatDate(item.updated_at || item.created_at)}
                       </td>
 
+                      {/* Actions */}
                       <td className="py-4 px-5 text-right">
                         {isEditing ? (
                           <div className="flex items-center justify-end gap-2">
@@ -309,7 +429,7 @@ export default function AdminRatesPage() {
                               className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 rounded-lg gap-1"
                             >
                               <Check className="w-3 h-3" />
-                              Save
+                              {t("admin.rates.save", "Save")}
                             </Button>
                             <Button
                               size="sm"
@@ -329,7 +449,7 @@ export default function AdminRatesPage() {
                               className="h-8 text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg gap-1 px-2.5"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
-                              Edit Rate
+                              {t("admin.rates.editRate", "Edit")}
                             </Button>
 
                             <Button
@@ -340,7 +460,7 @@ export default function AdminRatesPage() {
                               title="Delete item"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                              Delete
+                              {t("admin.rates.delete", "Delete")}
                             </Button>
                           </div>
                         )}
@@ -364,20 +484,21 @@ export default function AdminRatesPage() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-border">
               <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-emerald-600" />
-                Add New Scrap Material
+                {t("admin.rates.addTitle", "Add New Scrap Material")}
               </h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
 
             <form onSubmit={handleAddMaterial} className="space-y-4">
+              {/* Name */}
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-xs font-semibold">
-                  Scrap Material Name
+                  {t("admin.rates.materialName", "Scrap Material Name")}
                 </Label>
                 <Input
                   id="name"
                   required
-                  placeholder="e.g. Mixed Hard Plastic / Aluminium Sheets"
+                  placeholder={t("admin.rates.materialPlaceholder", "e.g. Mixed Hard Plastic")}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className="rounded-xl h-10 text-sm"
@@ -385,21 +506,56 @@ export default function AdminRatesPage() {
                 />
               </div>
 
+              {/* Category selector */}
               <div className="space-y-1.5">
-                <Label htmlFor="rate" className="text-xs font-semibold">
-                  Rate (Rs. per Kilogram)
+                <Label htmlFor="category" className="text-xs font-semibold">
+                  Category
                 </Label>
-                <Input
-                  id="rate"
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  required
-                  placeholder="e.g. 45"
-                  value={newRate}
-                  onChange={(e) => setNewRate(e.target.value)}
-                  className="rounded-xl h-10 text-sm"
-                />
+                <select
+                  id="category"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-600"
+                >
+                  {["Paper & Cardboard", "Metals", "Plastic", "E-Waste", "Glass & Bottles", "Household Metal", "Textile", "Household Items", "Rubber", "Batteries", "Appliances"].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Rate & Unit */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="rate" className="text-xs font-semibold">
+                    Rate (Rs.)
+                  </Label>
+                  <Input
+                    id="rate"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    required
+                    placeholder="e.g. 45"
+                    value={newRate}
+                    onChange={(e) => setNewRate(e.target.value)}
+                    className="rounded-xl h-10 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="unit" className="text-xs font-semibold">
+                    Pricing Unit
+                  </Label>
+                  <select
+                    id="unit"
+                    value={newUnit}
+                    onChange={(e) => setNewUnit(e.target.value)}
+                    className="w-full h-10 rounded-xl border border-input bg-background px-3 text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-600"
+                  >
+                    <option value="per_kg">Per Kilogram (kg)</option>
+                    <option value="per_piece">Per Piece (pcs)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-border">
@@ -410,14 +566,14 @@ export default function AdminRatesPage() {
                   onClick={() => setShowAddModal(false)}
                   className="rounded-xl h-10 px-4 text-xs font-semibold"
                 >
-                  Cancel
+                  {t("admin.rates.cancel", "Cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={saving}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl h-10 px-6 text-xs shadow-md shadow-emerald-600/20 gap-2"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add Material"}
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("admin.rates.addMaterial", "Add Material")}
                 </Button>
               </div>
             </form>
