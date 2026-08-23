@@ -67,7 +67,7 @@ The entire app supports **English** and **Nepali (नेपाली)** with a l
 | Routing | React Router v6 |
 | State Management | React Context (Auth, Theme, Language) |
 | Icons | Lucide React |
-| Deployment | Vercel (recommended) |
+| Deployment | Vercel|
 
 ---
 
