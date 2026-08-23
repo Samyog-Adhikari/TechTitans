@@ -1,13 +1,13 @@
-# KabadiMandu — Product Requirements Document
+# KabadMandu — Product Requirements Document
 ### Hackathon MVP — One Day Build
 
 ---
 
 ## 1. Problem
 
-Nepal's informal waste/recycling economy (kabadiwalas) has almost no digital infrastructure. Households don't know fair scrap prices and can't easily book pickup. Collectors have no income record, no way to prove earnings for credit, and no discoverability. KabadiMandu digitizes this loop and turns the collector's transaction history into a "finance-ready" income record.
+Nepal's informal waste/recycling economy (kabadiwalas) has almost no digital infrastructure. Households don't know fair scrap prices and can't easily book pickup. Collectors have no income record, no way to prove earnings for credit, and no discoverability. KabadMandu digitizes this loop and turns the collector's transaction history into a "finance-ready" income record.
 
-**Inspiration / positioning:** Similar in mechanics to EcoKabadi (an existing live Nepali scrap-pickup service), but KabadiMandu's differentiator is the collector-side income ledger — a record a collector could eventually use toward credit access. Frame the pitch around this, not as a straight clone.
+**Inspiration / positioning:** Similar in mechanics to EcoKabadi (an existing live Nepali scrap-pickup service), but KabadMandu's differentiator is the collector-side income ledger — a record a collector could eventually use toward credit access. Frame the pitch around this, not as a straight clone.
 
 ---
 
@@ -165,8 +165,8 @@ Receipts are just a formatted view of a `transactions` row — no separate table
 - [ ] Seed the `prices` table with rough Kathmandu rates
 - [ ] Enable Supabase Auth (Email provider, on by default)
 - [ ] Copy Project URL + anon key from Supabase API settings
-- [ ] `npm create vite@latest kabadimandu -- --template react` (choose ESLint, JavaScript)
-- [ ] `cd kabadimandu && npm install`
+- [ ] `npm create vite@latest KabadMandu -- --template react` (choose ESLint, JavaScript)
+- [ ] `cd KabadMandu && npm install`
 - [ ] `npm install @supabase/supabase-js react-router-dom`
 - [ ] Install Tailwind: `npm install tailwindcss @tailwindcss/vite`, wire into `vite.config.js` and `index.css`
 - [ ] Set up `@/*` path alias (`jsconfig.json` + `vite.config.js`)
@@ -205,7 +205,7 @@ Receipts are just a formatted view of a `transactions` row — no separate table
 ## 12. Folder Structure
 
 ```
-kabadimandu/
+KabadMandu/
 ├── src/
 │   ├── main.jsx
 │   ├── App.jsx
@@ -251,4 +251,4 @@ kabadimandu/
 
 ## 13. Open Item
 
-Confirm the hackathon's final track — KabadiMandu is logistics/marketplace with a fintech tail via the ledger, not pure Fintech or Education. If judged under Fintech, open your pitch with the ledger/credit-readiness angle, not the pickup mechanics.
+Confirm the hackathon's final track — KabadMandu is logistics/marketplace with a fintech tail via the ledger, not pure Fintech or Education. If judged under Fintech, open your pitch with the ledger/credit-readiness angle, not the pickup mechanics.
