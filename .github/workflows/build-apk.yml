@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build KabadMandu Android APK
 
 on:
   push:
@@ -11,9 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # -----------------------------
+      # 1. Checkout repository
+      # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # -----------------------------
+      # 2. Setup Node.js
+      # -----------------------------
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
@@ -21,10 +27,16 @@ jobs:
           cache: npm
           cache-dependency-path: KabadMandu/package-lock.json
 
+      # -----------------------------
+      # 3. Install React dependencies
+      # -----------------------------
       - name: Install dependencies
         working-directory: KabadMandu
         run: npm ci
 
+      # -----------------------------
+      # 4. Build React/Vite app
+      # -----------------------------
       - name: Build React app
         working-directory: KabadMandu
         run: npm run build
@@ -32,20 +44,39 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
+      # -----------------------------
+      # 5. Setup Java
+      # -----------------------------
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
+      # -----------------------------
+      # 6. Sync Capacitor
+      # -----------------------------
       - name: Sync Capacitor
         working-directory: KabadMandu
         run: npx cap sync android
 
-      - name: Build APK
+      # -----------------------------
+      # 7. Make Gradle executable
+      # -----------------------------
+      - name: Fix Gradle permissions
+        working-directory: KabadMandu/android
+        run: chmod +x gradlew
+
+      # -----------------------------
+      # 8. Build APK
+      # -----------------------------
+      - name: Build Debug APK
         working-directory: KabadMandu/android
         run: ./gradlew assembleDebug
 
+      # -----------------------------
+      # 9. Upload APK
+      # -----------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
