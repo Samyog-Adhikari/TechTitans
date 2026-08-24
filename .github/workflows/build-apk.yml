@@ -15,7 +15,7 @@ jobs:
       # 1. Checkout repository
       # -----------------------------
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # -----------------------------
       # 2. Setup Node.js
@@ -45,7 +45,16 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       # -----------------------------
-      # 5. Setup Java
+      # 5. Generate Android app icons from resources/icon.png
+      # -----------------------------
+      - name: Generate app icons
+        working-directory: KabadMandu
+        run: |
+          npm install @capacitor/assets --save-dev
+          npx capacitor-assets generate --android
+
+      # -----------------------------
+      # 6. Setup Java
       # -----------------------------
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -54,31 +63,31 @@ jobs:
           java-version: "21"
 
       # -----------------------------
-      # 6. Sync Capacitor
+      # 7. Sync Capacitor
       # -----------------------------
       - name: Sync Capacitor
         working-directory: KabadMandu
         run: npx cap sync android
 
       # -----------------------------
-      # 7. Make Gradle executable
+      # 8. Make Gradle executable
       # -----------------------------
       - name: Fix Gradle permissions
         working-directory: KabadMandu/android
         run: chmod +x gradlew
 
       # -----------------------------
-      # 8. Build APK
+      # 9. Build APK
       # -----------------------------
       - name: Build Debug APK
         working-directory: KabadMandu/android
         run: ./gradlew assembleDebug
 
       # -----------------------------
-      # 9. Upload APK
+      # 10. Upload APK
       # -----------------------------
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: KabadMandu-APK
           path: KabadMandu/android/app/build/outputs/apk/debug/app-debug.apk
