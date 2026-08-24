@@ -3,7 +3,7 @@ name: Build KabadMandu Android APK
 on:
   push:
     branches:
-      - MobileApp
+      - main
   workflow_dispatch:
 
 jobs:
