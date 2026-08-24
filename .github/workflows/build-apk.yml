@@ -1,10 +1,10 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - MobileApp
+  workflow_dispatch:
 
 jobs:
   build-android:
@@ -19,18 +19,18 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: KabadMandu/package-lock.json
 
       - name: Install dependencies
+        working-directory: KabadMandu
         run: npm ci
 
       - name: Build React app
+        working-directory: KabadMandu
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: Sync Capacitor
-        run: npx cap sync android
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -38,12 +38,16 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Build Debug APK
-        working-directory: android
+      - name: Sync Capacitor
+        working-directory: KabadMandu
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: KabadMandu/android
         run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: KabadMandu-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: KabadMandu/android/app/build/outputs/apk/debug/app-debug.apk
